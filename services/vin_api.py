@@ -35,7 +35,8 @@ async def fetch_autoria(vin: str, session: aiohttp.ClientSession) -> dict | None
 async def fetch_rapidapi(vin: str, session: aiohttp.ClientSession) -> dict | None:
     if not RAPIDAPI_KEY: return None
     
-    url = f"https://{RAPIDAPI_HOST}/vin_decoder_standard?vin={vin}" 
+    # Меняем на BASIC эндпоинт, который работает на бесплатных тарифах
+    url = f"https://{RAPIDAPI_HOST}/vin_decoder_basic?vin={vin}" 
     
     headers = {
         "X-RapidAPI-Key": RAPIDAPI_KEY,
@@ -45,18 +46,17 @@ async def fetch_rapidapi(vin: str, session: aiohttp.ClientSession) -> dict | Non
         async with session.get(url, headers=headers) as response:
             if response.status == 200:
                 raw_text = await response.text()
-                logging.info(f"RapidAPI RAW JSON: {raw_text}") 
+                logging.info(f"RapidAPI RAW JSON (Basic): {raw_text}") 
                 data = json.loads(raw_text)
                 
-                # Обработка ответа "FAILED" от провайдера
                 if data.get("Status") == "FAILED":
-                    logging.warning(f"RapidAPI не нашел данные для VIN {vin}")
+                    logging.warning(f"RapidAPI (Basic) не нашел данные для VIN {vin}")
                     return None
                     
                 res = get_standard_template()
                 res["source"] = "RapidAPI"
                 
-                # Универсальный парсинг для успешного ответа (ищем с большой и маленькой буквы)
+                # Парсинг (работает с большинством форматов)
                 res["vendor"] = str(data.get("Make", data.get("make", "Неизвестно")))
                 res["model"] = str(data.get("Model", data.get("model", "Неизвестно")))
                 res["year"] = str(data.get("Year", data.get("year", "Нет данных")))
