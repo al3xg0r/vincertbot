@@ -1,9 +1,9 @@
 import aiohttp
 import logging
+import json
 from config import AUTORIA_API_KEY, RAPIDAPI_KEY, RAPIDAPI_HOST, BAZAGAI_API_KEY
 
 def get_standard_template() -> dict:
-    """Единый шаблон данных для всех API, чтобы не ломать вывод."""
     return {
         "vendor": "Неизвестно", "model": "Неизвестно", "year": "Нет данных",
         "engine": "Нет данных", "color": "Нет данных", "mileage": "Нет записей",
@@ -13,29 +13,32 @@ def get_standard_template() -> dict:
 
 async def fetch_autoria(vin: str, session: aiohttp.ClientSession) -> dict | None:
     if not AUTORIA_API_KEY: return None
-    # Пример эндпоинта AutoRIA (зависит от купленного пакета проверок)
     url = f"https://developers.auto.ria.com/api/checks/info?api_key={AUTORIA_API_KEY}&vin={vin}"
     try:
         async with session.get(url) as response:
             if response.status == 200:
                 data = await response.json()
                 if "error" in data: return None
-                
                 res = get_standard_template()
                 res["source"] = "AUTO.RIA"
-                # Подгоняем поля (адаптируй под реальный ответ API)
                 res["vendor"] = data.get("markName", "Неизвестно")
                 res["model"] = data.get("modelName", "Неизвестно")
                 res["year"] = str(data.get("year", "Нет данных"))
                 res["photo_url"] = data.get("photoData", {}).get("seoLinkF")
                 return res
+            else:
+                logging.error(f"AutoRIA Status {response.status}: {await response.text()}")
     except Exception as e:
         logging.error(f"AutoRIA Error: {e}")
     return None
 
 async def fetch_rapidapi(vin: str, session: aiohttp.ClientSession) -> dict | None:
     if not RAPIDAPI_KEY: return None
-    url = f"https://{RAPIDAPI_HOST}/vin/{vin}"
+    
+    # Некоторые провайдеры на RapidAPI используют параметры (?vin=), некоторые пути (/vin/).
+    # Если ты уверен в провайдере, URL должен соответствовать его документации.
+    url = f"https://{RAPIDAPI_HOST}/vin/{vin}" 
+    
     headers = {
         "X-RapidAPI-Key": RAPIDAPI_KEY,
         "X-RapidAPI-Host": RAPIDAPI_HOST
@@ -43,22 +46,26 @@ async def fetch_rapidapi(vin: str, session: aiohttp.ClientSession) -> dict | Non
     try:
         async with session.get(url, headers=headers) as response:
             if response.status == 200:
-                data = await response.json()
+                # Читаем как текст, чтобы точно залогировать
+                raw_text = await response.text()
+                logging.info(f"RapidAPI RAW JSON: {raw_text}") 
+                
+                data = json.loads(raw_text)
                 res = get_standard_template()
                 res["source"] = "RapidAPI"
-                # Пример парсинга типичного VIN декодера
-                specs = data.get("specs", {})
-                res["vendor"] = specs.get("make", "Неизвестно")
-                res["model"] = specs.get("model", "Неизвестно")
-                res["year"] = specs.get("year", "Нет данных")
-                res["engine"] = specs.get("engine", "Нет данных")
+                
+                # ВРЕМЕННЫЙ ПАРСИНГ: берем наугад, пока не увидим логи
+                res["vendor"] = str(data.get("make", "Неизвестно"))
+                res["model"] = str(data.get("model", "Неизвестно"))
+                res["year"] = str(data.get("year", "Нет данных"))
                 return res
+            else:
+                logging.error(f"RapidAPI Status {response.status}: {await response.text()}")
     except Exception as e:
         logging.error(f"RapidAPI Error: {e}")
     return None
 
 async def fetch_bazagai(vin: str, session: aiohttp.ClientSession) -> dict | None:
-    """Резерв для Baza-Gai, когда пришлют ключ."""
     if not BAZAGAI_API_KEY: return None
     url = f"https://baza-gai.com.ua/vin/{vin}"
     headers = {"X-Api-Key": BAZAGAI_API_KEY, "Accept": "application/json"}
@@ -77,34 +84,31 @@ async def fetch_bazagai(vin: str, session: aiohttp.ClientSession) -> dict | None
                 operations = data.get("operations", [])
                 res["owners_count"] = str(len(operations)) if operations else "Нет данных"
                 return res
+            else:
+                logging.error(f"Baza-Gai Status {response.status}: {await response.text()}")
     except Exception as e:
         logging.error(f"Baza-Gai Error: {e}")
     return None
 
 async def fetch_vin_data(vin: str) -> dict | None:
-    """Главная функция: перебирает API по очереди."""
     async with aiohttp.ClientSession() as session:
-        # 1. Пробуем AutoRIA
         data = await fetch_autoria(vin, session)
         if data: return data
         
-        # 2. Фоллбэк на RapidAPI
         data = await fetch_rapidapi(vin, session)
         if data: return data
 
-        # 3. Фоллбэк на Baza-Gai (сработает, когда добавишь ключ)
         data = await fetch_bazagai(vin, session)
         if data: return data
 
     return None
 
 def format_vin_report(data: dict) -> tuple[str, str | None]:
-    """Форматирует единый словарь в текст."""
     wanted_text = "🚨 <b>В РОЗЫСКЕ!</b>" if data["is_stolen"] else "✅ В розыске не числится"
 
     report = (
         f"🚘 <b>Отчет по авто: {data['vendor']} {data['model']} ({data['year']})</b>\n"
-        f"🔍 <i>Источник данных: {data['source']}</i>\n\n"
+        f"🔍 <i>Источник: {data['source']}</i>\n\n"
         f"<b>Характеристики:</b>\n"
         f"▪️ Двигатель: {data['engine']}\n"
         f"▪️ Цвет: {data['color']}\n\n"
@@ -115,5 +119,4 @@ def format_vin_report(data: dict) -> tuple[str, str | None]:
         f"<b>Статус:</b>\n"
         f"{wanted_text}"
     )
-    
     return report, data["photo_url"]
