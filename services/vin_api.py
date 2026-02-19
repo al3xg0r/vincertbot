@@ -35,9 +35,8 @@ async def fetch_autoria(vin: str, session: aiohttp.ClientSession) -> dict | None
 async def fetch_rapidapi(vin: str, session: aiohttp.ClientSession) -> dict | None:
     if not RAPIDAPI_KEY: return None
     
-    # Некоторые провайдеры на RapidAPI используют параметры (?vin=), некоторые пути (/vin/).
-    # Если ты уверен в провайдере, URL должен соответствовать его документации.
-    url = f"https://{RAPIDAPI_HOST}/vin/{vin}" 
+    # Исправленный URL под твоего провайдера
+    url = f"https://{RAPIDAPI_HOST}/vin_decoder_standard?vin={vin}" 
     
     headers = {
         "X-RapidAPI-Key": RAPIDAPI_KEY,
@@ -46,7 +45,7 @@ async def fetch_rapidapi(vin: str, session: aiohttp.ClientSession) -> dict | Non
     try:
         async with session.get(url, headers=headers) as response:
             if response.status == 200:
-                # Читаем как текст, чтобы точно залогировать
+                # Читаем как текст, чтобы точно залогировать структуру
                 raw_text = await response.text()
                 logging.info(f"RapidAPI RAW JSON: {raw_text}") 
                 
