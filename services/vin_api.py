@@ -35,7 +35,6 @@ async def fetch_autoria(vin: str, session: aiohttp.ClientSession) -> dict | None
 async def fetch_rapidapi(vin: str, session: aiohttp.ClientSession) -> dict | None:
     if not RAPIDAPI_KEY: return None
     
-    # Меняем на BASIC эндпоинт, который работает на бесплатных тарифах
     url = f"https://{RAPIDAPI_HOST}/vin_decoder_basic?vin={vin}" 
     
     headers = {
@@ -46,7 +45,6 @@ async def fetch_rapidapi(vin: str, session: aiohttp.ClientSession) -> dict | Non
         async with session.get(url, headers=headers) as response:
             if response.status == 200:
                 raw_text = await response.text()
-                logging.info(f"RapidAPI RAW JSON (Basic): {raw_text}") 
                 data = json.loads(raw_text)
                 
                 if data.get("Status") == "FAILED":
@@ -56,11 +54,22 @@ async def fetch_rapidapi(vin: str, session: aiohttp.ClientSession) -> dict | Non
                 res = get_standard_template()
                 res["source"] = "RapidAPI"
                 
-                # Парсинг (работает с большинством форматов)
-                res["vendor"] = str(data.get("Make", data.get("make", "Неизвестно")))
-                res["model"] = str(data.get("Model", data.get("model", "Неизвестно")))
-                res["year"] = str(data.get("Year", data.get("year", "Нет данных")))
-                res["engine"] = str(data.get("Engine", data.get("engine", "Нет данных")))
+                # Вспомогательная функция для извлечения значения из словаря (напр. {'value': 'Tesla'})
+                def extract_value(key, default):
+                    # Ищем ключ с большой или маленькой буквы
+                    val = data.get(key, data.get(key.lower()))
+                    if not val:
+                        return default
+                    # Если значение - это словарь, достаем из него 'value'
+                    if isinstance(val, dict):
+                        return str(val.get("value", default))
+                    # Если обычная строка/число
+                    return str(val)
+
+                res["vendor"] = extract_value("Make", "Неизвестно")
+                res["model"] = extract_value("Model", "Неизвестно")
+                res["year"] = extract_value("Year", "Нет данных")
+                res["engine"] = extract_value("Engine", "Нет данных")
                 
                 return res
             else:
