@@ -35,7 +35,6 @@ async def fetch_autoria(vin: str, session: aiohttp.ClientSession) -> dict | None
 async def fetch_rapidapi(vin: str, session: aiohttp.ClientSession) -> dict | None:
     if not RAPIDAPI_KEY: return None
     
-    # Исправленный URL под твоего провайдера
     url = f"https://{RAPIDAPI_HOST}/vin_decoder_standard?vin={vin}" 
     
     headers = {
@@ -45,18 +44,24 @@ async def fetch_rapidapi(vin: str, session: aiohttp.ClientSession) -> dict | Non
     try:
         async with session.get(url, headers=headers) as response:
             if response.status == 200:
-                # Читаем как текст, чтобы точно залогировать структуру
                 raw_text = await response.text()
                 logging.info(f"RapidAPI RAW JSON: {raw_text}") 
-                
                 data = json.loads(raw_text)
+                
+                # Обработка ответа "FAILED" от провайдера
+                if data.get("Status") == "FAILED":
+                    logging.warning(f"RapidAPI не нашел данные для VIN {vin}")
+                    return None
+                    
                 res = get_standard_template()
                 res["source"] = "RapidAPI"
                 
-                # ВРЕМЕННЫЙ ПАРСИНГ: берем наугад, пока не увидим логи
-                res["vendor"] = str(data.get("make", "Неизвестно"))
-                res["model"] = str(data.get("model", "Неизвестно"))
-                res["year"] = str(data.get("year", "Нет данных"))
+                # Универсальный парсинг для успешного ответа (ищем с большой и маленькой буквы)
+                res["vendor"] = str(data.get("Make", data.get("make", "Неизвестно")))
+                res["model"] = str(data.get("Model", data.get("model", "Неизвестно")))
+                res["year"] = str(data.get("Year", data.get("year", "Нет данных")))
+                res["engine"] = str(data.get("Engine", data.get("engine", "Нет данных")))
+                
                 return res
             else:
                 logging.error(f"RapidAPI Status {response.status}: {await response.text()}")
