@@ -9,6 +9,4 @@ if not BOT_TOKEN:
 
 # API Keys
 AUTORIA_API_KEY = os.getenv("AUTORIA_API_KEY")
-RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
-RAPIDAPI_HOST = os.getenv("RAPIDAPI_HOST", "vin-decoder19.p.rapidapi.com")
 BAZAGAI_API_KEY = os.getenv("BAZAGAI_API_KEY")

@@ -1,7 +1,6 @@
 import aiohttp
 import logging
-import json
-from config import AUTORIA_API_KEY, RAPIDAPI_KEY, RAPIDAPI_HOST, BAZAGAI_API_KEY
+from config import AUTORIA_API_KEY, BAZAGAI_API_KEY
 
 def get_standard_template() -> dict:
     return {
@@ -32,52 +31,6 @@ async def fetch_autoria(vin: str, session: aiohttp.ClientSession) -> dict | None
         logging.error(f"AutoRIA Error: {e}")
     return None
 
-async def fetch_rapidapi(vin: str, session: aiohttp.ClientSession) -> dict | None:
-    if not RAPIDAPI_KEY: return None
-    
-    url = f"https://{RAPIDAPI_HOST}/vin_decoder_basic?vin={vin}" 
-    
-    headers = {
-        "X-RapidAPI-Key": RAPIDAPI_KEY,
-        "X-RapidAPI-Host": RAPIDAPI_HOST
-    }
-    try:
-        async with session.get(url, headers=headers) as response:
-            if response.status == 200:
-                raw_text = await response.text()
-                data = json.loads(raw_text)
-                
-                if data.get("Status") == "FAILED":
-                    logging.warning(f"RapidAPI (Basic) не нашел данные для VIN {vin}")
-                    return None
-                    
-                res = get_standard_template()
-                res["source"] = "RapidAPI"
-                
-                # Вспомогательная функция для извлечения значения из словаря (напр. {'value': 'Tesla'})
-                def extract_value(key, default):
-                    # Ищем ключ с большой или маленькой буквы
-                    val = data.get(key, data.get(key.lower()))
-                    if not val:
-                        return default
-                    # Если значение - это словарь, достаем из него 'value'
-                    if isinstance(val, dict):
-                        return str(val.get("value", default))
-                    # Если обычная строка/число
-                    return str(val)
-
-                res["vendor"] = extract_value("Make", "Неизвестно")
-                res["model"] = extract_value("Model", "Неизвестно")
-                res["year"] = extract_value("Year", "Нет данных")
-                res["engine"] = extract_value("Engine", "Нет данных")
-                
-                return res
-            else:
-                logging.error(f"RapidAPI Status {response.status}: {await response.text()}")
-    except Exception as e:
-        logging.error(f"RapidAPI Error: {e}")
-    return None
-
 async def fetch_bazagai(vin: str, session: aiohttp.ClientSession) -> dict | None:
     if not BAZAGAI_API_KEY: return None
     url = f"https://baza-gai.com.ua/vin/{vin}"
@@ -105,12 +58,11 @@ async def fetch_bazagai(vin: str, session: aiohttp.ClientSession) -> dict | None
 
 async def fetch_vin_data(vin: str) -> dict | None:
     async with aiohttp.ClientSession() as session:
+        # Сначала стучимся в AutoRIA
         data = await fetch_autoria(vin, session)
         if data: return data
-        
-        data = await fetch_rapidapi(vin, session)
-        if data: return data
 
+        # Если там нет или упало - стучимся в Baza-Gai
         data = await fetch_bazagai(vin, session)
         if data: return data
 
