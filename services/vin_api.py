@@ -50,6 +50,10 @@ async def fetch_bazagai(vin: str, session: aiohttp.ClientSession) -> dict | None
                 operations = data.get("operations", [])
                 res["owners_count"] = str(len(operations)) if operations else "Нет данных"
                 return res
+            elif response.status == 404:
+                # База ответила, но машины там нет. Это нормально.
+                logging.info(f"Baza-Gai: авто с VIN {vin} не найдено в базе.")
+                return None
             else:
                 logging.error(f"Baza-Gai Status {response.status}: {await response.text()}")
     except Exception as e:
