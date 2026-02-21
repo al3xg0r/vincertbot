@@ -20,7 +20,7 @@ async def fetch_autoria(query: str, session: aiohttp.ClientSession) -> dict | No
         "langId": 4,
         "period": 365,
         "params": {
-            "omniId": query  # AutoRIA умеет переваривать и VIN, и гос. номера через один параметр
+            "omniId": query
         }
     }
     
@@ -83,10 +83,7 @@ async def fetch_autoria(query: str, session: aiohttp.ClientSession) -> dict | No
 async def fetch_bazagai(query: str, session: aiohttp.ClientSession) -> dict | None:
     if not BAZAGAI_API_KEY: return None
     
-    # Очищаем запрос от пробелов и делаем заглавными
     query = query.upper().replace(" ", "")
-    
-    # Если 17 символов — это VIN, иначе — гос. номер
     is_vin = len(query) == 17
     endpoint = "vin" if is_vin else "nomer"
     
@@ -96,16 +93,49 @@ async def fetch_bazagai(query: str, session: aiohttp.ClientSession) -> dict | No
         async with session.get(url, headers=headers) as response:
             if response.status == 200:
                 data = await response.json()
+                
+                # Логируем сырой ответ Baza-Gai на всякий случай
+                logging.info(f"Baza-Gai RAW JSON for {query}: {data}")
+                
                 res = get_standard_template()
                 res["source"] = "Baza-Gai"
                 res["vendor"] = data.get("vendor", "Неизвестно")
                 res["model"] = data.get("model", "Неизвестно")
                 res["year"] = str(data.get("model_year", "Нет данных"))
-                res["color"] = data.get("color", "Нет данных")
                 res["photo_url"] = data.get("photo_url")
                 res["is_stolen"] = data.get("is_stolen", False)
+                
                 operations = data.get("operations", [])
                 res["owners_count"] = str(len(operations)) if operations else "Нет данных"
+                
+                # Глубокий парсинг данных из истории регистраций
+                if operations:
+                    last_op = operations[0] # Берем самую свежую операцию
+                    
+                    # Парсим цвет (иногда приходит словарем, иногда строкой)
+                    color_obj = last_op.get("color") or data.get("color")
+                    if isinstance(color_obj, dict):
+                        res["color"] = color_obj.get("ua") or color_obj.get("title") or color_obj.get("ru", "Нет данных")
+                    elif color_obj:
+                        res["color"] = str(color_obj)
+                        
+                    # Парсим двигатель (Топливо + Объем)
+                    capacity = last_op.get("engine_capacity")
+                    fuel_obj = last_op.get("fuel")
+                    
+                    fuel = ""
+                    if isinstance(fuel_obj, dict):
+                        fuel = fuel_obj.get("ua") or fuel_obj.get("title") or fuel_obj.get("ru", "")
+                    elif fuel_obj:
+                        fuel = str(fuel_obj)
+                        
+                    engine_parts = []
+                    if fuel: engine_parts.append(fuel)
+                    if capacity: engine_parts.append(f"{capacity} см³")
+                    
+                    if engine_parts:
+                        res["engine"] = ", ".join(engine_parts)
+                        
                 return res
             elif response.status == 404:
                 logging.info(f"Baza-Gai: авто с '{query}' не найдено в базе.")
@@ -117,7 +147,6 @@ async def fetch_bazagai(query: str, session: aiohttp.ClientSession) -> dict | No
     return None
 
 async def fetch_vin_data(query: str) -> dict | None:
-    # Санитаризация ввода (убираем случайные пробелы до и после)
     query = query.upper().strip()
     
     async with aiohttp.ClientSession() as session:
