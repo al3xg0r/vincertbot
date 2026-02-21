@@ -1,6 +1,7 @@
 import aiohttp
 import logging
-from config import AUTORIA_API_KEY, BAZAGAI_API_KEY
+import json
+from config import AUTORIA_API_KEY, AUTORIA_USER_ID, BAZAGAI_API_KEY
 
 def get_standard_template() -> dict:
     return {
@@ -11,22 +12,28 @@ def get_standard_template() -> dict:
     }
 
 async def fetch_autoria(vin: str, session: aiohttp.ClientSession) -> dict | None:
-    if not AUTORIA_API_KEY: return None
+    if not AUTORIA_API_KEY or not AUTORIA_USER_ID: 
+        return None
     
-    # Исправленный рабочий домен AutoRIA
-    url = f"https://auto.ria.com/api/checks/info?api_key={AUTORIA_API_KEY}&vin={vin}"
+    url = f"https://developers.ria.com/auto/params/by/vin-code/?user_id={AUTORIA_USER_ID}&api_key={AUTORIA_API_KEY}"
+    
+    payload = {
+        "langId": 4,
+        "period": 365,
+        "params": {
+            "omniId": vin
+        }
+    }
     
     try:
-        async with session.get(url) as response:
+        async with session.post(url, json=payload) as response:
             if response.status == 200:
-                data = await response.json()
-                if "error" in data: return None
+                raw_text = await response.text()
+                logging.info(f"AutoRIA RAW JSON: {raw_text}")
+                
+                # Временно отдаем пустой шаблон, пока не напишем парсер по логам
                 res = get_standard_template()
                 res["source"] = "AUTO.RIA"
-                res["vendor"] = data.get("markName", "Неизвестно")
-                res["model"] = data.get("modelName", "Неизвестно")
-                res["year"] = str(data.get("year", "Нет данных"))
-                res["photo_url"] = data.get("photoData", {}).get("seoLinkF")
                 return res
             else:
                 logging.error(f"AutoRIA Status {response.status}: {await response.text()}")
@@ -54,7 +61,6 @@ async def fetch_bazagai(vin: str, session: aiohttp.ClientSession) -> dict | None
                 res["owners_count"] = str(len(operations)) if operations else "Нет данных"
                 return res
             elif response.status == 404:
-                # База ответила, но машины там нет.
                 logging.info(f"Baza-Gai: авто с VIN {vin} не найдено в базе.")
                 return None
             else:
@@ -65,11 +71,9 @@ async def fetch_bazagai(vin: str, session: aiohttp.ClientSession) -> dict | None
 
 async def fetch_vin_data(vin: str) -> dict | None:
     async with aiohttp.ClientSession() as session:
-        # Сначала стучимся в AutoRIA
         data = await fetch_autoria(vin, session)
         if data: return data
 
-        # Если там нет или упало - стучимся в Baza-Gai
         data = await fetch_bazagai(vin, session)
         if data: return data
 
