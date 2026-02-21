@@ -29,19 +29,57 @@ async def fetch_autoria(vin: str, session: aiohttp.ClientSession) -> dict | None
             if response.status == 200:
                 data = await response.json()
                 
-                # Обработка ошибки "Некоректні вхідні данні" (Машины нет на АвтоРИА)
+                # Обработка ошибки (машины нет на сайте)
                 if "noticeData" in data:
                     for notice in data["noticeData"]:
                         if notice.get("noticeType") == "error":
-                            logging.info(f"AutoRIA: Машина с VIN {vin} не продавалась на сайте (Некоректні вхідні данні).")
+                            logging.info(f"AutoRIA: Машина с VIN {vin} не найдена на сайте.")
                             return None
-                
-                # Если ошибки нет, выводим сырой JSON успешного ответа в лог для написания парсера
-                logging.info(f"AutoRIA SUCCESS JSON: {data}")
                 
                 res = get_standard_template()
                 res["source"] = "AUTO.RIA"
-                res["vendor"] = "Тест (Ждем успешный лог)"
+                
+                # Парсим массив характеристик (chips)
+                chips = data.get("chipsData", {}).get("chips", [])
+                
+                def get_chip_name(entity_name):
+                    for c in chips:
+                        if c.get("entity") == entity_name:
+                            return c.get("name", "")
+                    return ""
+                    
+                def get_chip_value_gte(entity_name):
+                    for c in chips:
+                        if c.get("entity") == entity_name:
+                            val = c.get("value", {})
+                            if isinstance(val, dict):
+                                return val.get("gte", "")
+                    return ""
+
+                # Извлекаем марку и модель
+                vendor = get_chip_name("brandId")
+                model = get_chip_name("modelId")
+                if vendor: res["vendor"] = vendor
+                if model: res["model"] = model
+                
+                # Извлекаем год
+                year = get_chip_value_gte("year")
+                if year: res["year"] = str(year)
+                
+                # Извлекаем цвет
+                color = get_chip_name("colorId")
+                if color: res["color"] = color
+                
+                # Собираем двигатель (Тип топлива + Модификация)
+                fuel = get_chip_name("fuelId")
+                modification = get_chip_name("modificationId")
+                engine = f"{fuel}, {modification}".strip(", ")
+                if engine: res["engine"] = engine
+                
+                # Извлекаем пробег
+                mileage = get_chip_value_gte("mileage")
+                if mileage: res["mileage"] = f"{mileage} тис. км"
+                
                 return res
             else:
                 logging.error(f"AutoRIA Status {response.status}: {await response.text()}")
