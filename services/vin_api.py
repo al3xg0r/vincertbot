@@ -12,7 +12,10 @@ def get_standard_template() -> dict:
 
 async def fetch_autoria(vin: str, session: aiohttp.ClientSession) -> dict | None:
     if not AUTORIA_API_KEY: return None
-    url = f"https://developers.auto.ria.com/api/checks/info?api_key={AUTORIA_API_KEY}&vin={vin}"
+    
+    # Исправленный рабочий домен AutoRIA
+    url = f"https://auto.ria.com/api/checks/info?api_key={AUTORIA_API_KEY}&vin={vin}"
+    
     try:
         async with session.get(url) as response:
             if response.status == 200:
@@ -51,7 +54,7 @@ async def fetch_bazagai(vin: str, session: aiohttp.ClientSession) -> dict | None
                 res["owners_count"] = str(len(operations)) if operations else "Нет данных"
                 return res
             elif response.status == 404:
-                # База ответила, но машины там нет. Это нормально.
+                # База ответила, но машины там нет.
                 logging.info(f"Baza-Gai: авто с VIN {vin} не найдено в базе.")
                 return None
             else:
