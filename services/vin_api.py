@@ -10,7 +10,7 @@ def get_standard_template() -> dict:
         "is_stolen": False, "photo_url": None, "source": ""
     }
 
-async def fetch_autoria(vin: str, session: aiohttp.ClientSession) -> dict | None:
+async def fetch_autoria(query: str, session: aiohttp.ClientSession) -> dict | None:
     if not AUTORIA_API_KEY or not AUTORIA_USER_ID: 
         return None
     
@@ -20,7 +20,7 @@ async def fetch_autoria(vin: str, session: aiohttp.ClientSession) -> dict | None
         "langId": 4,
         "period": 365,
         "params": {
-            "omniId": vin
+            "omniId": query  # AutoRIA умеет переваривать и VIN, и гос. номера через один параметр
         }
     }
     
@@ -29,17 +29,15 @@ async def fetch_autoria(vin: str, session: aiohttp.ClientSession) -> dict | None
             if response.status == 200:
                 data = await response.json()
                 
-                # Обработка ошибки (машины нет на сайте)
                 if "noticeData" in data:
                     for notice in data["noticeData"]:
                         if notice.get("noticeType") == "error":
-                            logging.info(f"AutoRIA: Машина с VIN {vin} не найдена на сайте.")
+                            logging.info(f"AutoRIA: Машина с '{query}' не найдена на сайте.")
                             return None
                 
                 res = get_standard_template()
                 res["source"] = "AUTO.RIA"
                 
-                # Парсим массив характеристик (chips)
                 chips = data.get("chipsData", {}).get("chips", [])
                 
                 def get_chip_name(entity_name):
@@ -56,27 +54,22 @@ async def fetch_autoria(vin: str, session: aiohttp.ClientSession) -> dict | None
                                 return val.get("gte", "")
                     return ""
 
-                # Извлекаем марку и модель
                 vendor = get_chip_name("brandId")
                 model = get_chip_name("modelId")
                 if vendor: res["vendor"] = vendor
                 if model: res["model"] = model
                 
-                # Извлекаем год
                 year = get_chip_value_gte("year")
                 if year: res["year"] = str(year)
                 
-                # Извлекаем цвет
                 color = get_chip_name("colorId")
                 if color: res["color"] = color
                 
-                # Собираем двигатель (Тип топлива + Модификация)
                 fuel = get_chip_name("fuelId")
                 modification = get_chip_name("modificationId")
                 engine = f"{fuel}, {modification}".strip(", ")
                 if engine: res["engine"] = engine
                 
-                # Извлекаем пробег
                 mileage = get_chip_value_gte("mileage")
                 if mileage: res["mileage"] = f"{mileage} тис. км"
                 
@@ -87,9 +80,17 @@ async def fetch_autoria(vin: str, session: aiohttp.ClientSession) -> dict | None
         logging.error(f"AutoRIA Error: {e}")
     return None
 
-async def fetch_bazagai(vin: str, session: aiohttp.ClientSession) -> dict | None:
+async def fetch_bazagai(query: str, session: aiohttp.ClientSession) -> dict | None:
     if not BAZAGAI_API_KEY: return None
-    url = f"https://baza-gai.com.ua/vin/{vin}"
+    
+    # Очищаем запрос от пробелов и делаем заглавными
+    query = query.upper().replace(" ", "")
+    
+    # Если 17 символов — это VIN, иначе — гос. номер
+    is_vin = len(query) == 17
+    endpoint = "vin" if is_vin else "nomer"
+    
+    url = f"https://baza-gai.com.ua/{endpoint}/{query}"
     headers = {"X-Api-Key": BAZAGAI_API_KEY, "Accept": "application/json"}
     try:
         async with session.get(url, headers=headers) as response:
@@ -107,7 +108,7 @@ async def fetch_bazagai(vin: str, session: aiohttp.ClientSession) -> dict | None
                 res["owners_count"] = str(len(operations)) if operations else "Нет данных"
                 return res
             elif response.status == 404:
-                logging.info(f"Baza-Gai: авто с VIN {vin} не найдено в базе.")
+                logging.info(f"Baza-Gai: авто с '{query}' не найдено в базе.")
                 return None
             else:
                 logging.error(f"Baza-Gai Status {response.status}: {await response.text()}")
@@ -115,12 +116,15 @@ async def fetch_bazagai(vin: str, session: aiohttp.ClientSession) -> dict | None
         logging.error(f"Baza-Gai Error: {e}")
     return None
 
-async def fetch_vin_data(vin: str) -> dict | None:
+async def fetch_vin_data(query: str) -> dict | None:
+    # Санитаризация ввода (убираем случайные пробелы до и после)
+    query = query.upper().strip()
+    
     async with aiohttp.ClientSession() as session:
-        data = await fetch_autoria(vin, session)
+        data = await fetch_autoria(query, session)
         if data: return data
 
-        data = await fetch_bazagai(vin, session)
+        data = await fetch_bazagai(query, session)
         if data: return data
 
     return None
