@@ -10,24 +10,26 @@ router = Router()
 async def cmd_start(message: Message):
     await message.answer(
         "Привет! Отправь мне VIN-код автомобиля (17 символов) "
-        "для получения полного отчета по базам Украины."
+        "или гос. номер (например, AA1234BC) для получения полного отчета по базам Украины."
     )
 
 @router.message(F.text)
 async def handle_vin_request(message: Message):
-    vin = message.text.strip().upper()
+    # Убираем лишние пробелы по краям и внутри, переводим в верхний регистр
+    query = message.text.strip().upper().replace(" ", "")
     
-    # Проверка формата VIN (17 символов, исключая I, O, Q)
-    if not re.match(r"^[A-HJ-NPR-Z0-9]{17}$", vin):
-        await message.answer("⚠️ Неверный формат. VIN-код должен состоять ровно из 17 символов (латиница и цифры).")
+    # Проверка длины: от 4 до 17 символов (чтобы пропускать и номера, и VIN)
+    if len(query) < 4 or len(query) > 17:
+        await message.answer("⚠️ Неверный формат. Отправьте 17-значный VIN-код или гос. номер авто (например, AA1234BC).")
         return
 
     msg = await message.answer("⏳ Запрашиваю данные по базам. Подождите...")
 
-    data = await fetch_vin_data(vin)
+    # Передаем очищенный запрос в нашу универсальную функцию
+    data = await fetch_vin_data(query)
     
     if not data:
-        await msg.edit_text("❌ Данные по этому VIN не найдены или сервис временно недоступен.")
+        await msg.edit_text("❌ Данные по этому запросу не найдены или сервис временно недоступен.")
         return
 
     report_text, photo_url = format_vin_report(data)
