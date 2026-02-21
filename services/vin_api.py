@@ -1,6 +1,5 @@
 import aiohttp
 import logging
-import json
 from config import AUTORIA_API_KEY, AUTORIA_USER_ID, BAZAGAI_API_KEY
 
 def get_standard_template() -> dict:
@@ -28,12 +27,21 @@ async def fetch_autoria(vin: str, session: aiohttp.ClientSession) -> dict | None
     try:
         async with session.post(url, json=payload) as response:
             if response.status == 200:
-                raw_text = await response.text()
-                logging.info(f"AutoRIA RAW JSON: {raw_text}")
+                data = await response.json()
                 
-                # Временно отдаем пустой шаблон, пока не напишем парсер по логам
+                # Обработка ошибки "Некоректні вхідні данні" (Машины нет на АвтоРИА)
+                if "noticeData" in data:
+                    for notice in data["noticeData"]:
+                        if notice.get("noticeType") == "error":
+                            logging.info(f"AutoRIA: Машина с VIN {vin} не продавалась на сайте (Некоректні вхідні данні).")
+                            return None
+                
+                # Если ошибки нет, выводим сырой JSON успешного ответа в лог для написания парсера
+                logging.info(f"AutoRIA SUCCESS JSON: {data}")
+                
                 res = get_standard_template()
                 res["source"] = "AUTO.RIA"
+                res["vendor"] = "Тест (Ждем успешный лог)"
                 return res
             else:
                 logging.error(f"AutoRIA Status {response.status}: {await response.text()}")
