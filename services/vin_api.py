@@ -2,7 +2,14 @@ import aiohttp
 import logging
 from config import AUTORIA_API_KEY, AUTORIA_USER_ID, BAZAGAI_API_KEY
 
-def get_standard_template() -> dict:
+def get_standard_template(lang: str) -> dict:
+    if lang == "uk":
+        return {
+            "vendor": "Невідомо", "model": "Невідомо", "year": "Немає даних",
+            "engine": "Немає даних", "color": "Немає даних", "mileage": "Немає записів",
+            "accidents": "Немає записів", "owners_count": "Немає даних", 
+            "is_stolen": False, "photo_url": None, "source": ""
+        }
     return {
         "vendor": "Неизвестно", "model": "Неизвестно", "year": "Нет данных",
         "engine": "Нет данных", "color": "Нет данных", "mileage": "Нет записей",
@@ -10,14 +17,14 @@ def get_standard_template() -> dict:
         "is_stolen": False, "photo_url": None, "source": ""
     }
 
-async def fetch_autoria(query: str, session: aiohttp.ClientSession) -> dict | None:
+async def fetch_autoria(query: str, session: aiohttp.ClientSession, lang: str) -> dict | None:
     if not AUTORIA_API_KEY or not AUTORIA_USER_ID: 
         return None
     
     url = f"https://developers.ria.com/auto/params/by/vin-code/?user_id={AUTORIA_USER_ID}&api_key={AUTORIA_API_KEY}"
     
     payload = {
-        "langId": 4,
+        "langId": 4, # 4 = Украинский язык ответа от API АвтоРИА
         "period": 365,
         "params": {
             "omniId": query
@@ -35,7 +42,7 @@ async def fetch_autoria(query: str, session: aiohttp.ClientSession) -> dict | No
                             logging.info(f"AutoRIA: Машина с '{query}' не найдена на сайте.")
                             return None
                 
-                res = get_standard_template()
+                res = get_standard_template(lang)
                 res["source"] = "AUTO.RIA"
                 
                 chips = data.get("chipsData", {}).get("chips", [])
@@ -71,7 +78,8 @@ async def fetch_autoria(query: str, session: aiohttp.ClientSession) -> dict | No
                 if engine: res["engine"] = engine
                 
                 mileage = get_chip_value_gte("mileage")
-                if mileage: res["mileage"] = f"{mileage} тис. км"
+                mil_suffix = "тис. км" if lang == "uk" else "тыс. км"
+                if mileage: res["mileage"] = f"{mileage} {mil_suffix}"
                 
                 return res
             else:
@@ -80,7 +88,7 @@ async def fetch_autoria(query: str, session: aiohttp.ClientSession) -> dict | No
         logging.error(f"AutoRIA Error: {e}")
     return None
 
-async def fetch_bazagai(query: str, session: aiohttp.ClientSession) -> dict | None:
+async def fetch_bazagai(query: str, session: aiohttp.ClientSession, lang: str) -> dict | None:
     if not BAZAGAI_API_KEY: return None
     
     query = query.upper().replace(" ", "")
@@ -94,10 +102,7 @@ async def fetch_bazagai(query: str, session: aiohttp.ClientSession) -> dict | No
             if response.status == 200:
                 data = await response.json()
                 
-                # Логируем сырой ответ Baza-Gai на всякий случай
-                logging.info(f"Baza-Gai RAW JSON for {query}: {data}")
-                
-                res = get_standard_template()
+                res = get_standard_template(lang)
                 res["source"] = "Baza-Gai"
                 res["vendor"] = data.get("vendor", "Неизвестно")
                 res["model"] = data.get("model", "Неизвестно")
@@ -106,26 +111,25 @@ async def fetch_bazagai(query: str, session: aiohttp.ClientSession) -> dict | No
                 res["is_stolen"] = data.get("is_stolen", False)
                 
                 operations = data.get("operations", [])
-                res["owners_count"] = str(len(operations)) if operations else "Нет данных"
+                res["owners_count"] = str(len(operations)) if operations else ("Немає даних" if lang == "uk" else "Нет данных")
                 
-                # Глубокий парсинг данных из истории регистраций
+                lang_key = "ua" if lang == "uk" else "ru"
+                
                 if operations:
-                    last_op = operations[0] # Берем самую свежую операцию
+                    last_op = operations[0]
                     
-                    # Парсим цвет (иногда приходит словарем, иногда строкой)
                     color_obj = last_op.get("color") or data.get("color")
                     if isinstance(color_obj, dict):
-                        res["color"] = color_obj.get("ua") or color_obj.get("title") or color_obj.get("ru", "Нет данных")
+                        res["color"] = color_obj.get(lang_key) or color_obj.get("title") or res["color"]
                     elif color_obj:
                         res["color"] = str(color_obj)
                         
-                    # Парсим двигатель (Топливо + Объем)
                     capacity = last_op.get("engine_capacity")
                     fuel_obj = last_op.get("fuel")
                     
                     fuel = ""
                     if isinstance(fuel_obj, dict):
-                        fuel = fuel_obj.get("ua") or fuel_obj.get("title") or fuel_obj.get("ru", "")
+                        fuel = fuel_obj.get(lang_key) or fuel_obj.get("title") or ""
                     elif fuel_obj:
                         fuel = str(fuel_obj)
                         
@@ -138,7 +142,6 @@ async def fetch_bazagai(query: str, session: aiohttp.ClientSession) -> dict | No
                         
                 return res
             elif response.status == 404:
-                logging.info(f"Baza-Gai: авто с '{query}' не найдено в базе.")
                 return None
             else:
                 logging.error(f"Baza-Gai Status {response.status}: {await response.text()}")
@@ -146,32 +149,47 @@ async def fetch_bazagai(query: str, session: aiohttp.ClientSession) -> dict | No
         logging.error(f"Baza-Gai Error: {e}")
     return None
 
-async def fetch_vin_data(query: str) -> dict | None:
+async def fetch_vin_data(query: str, lang: str = "ru") -> dict | None:
     query = query.upper().strip()
     
     async with aiohttp.ClientSession() as session:
-        data = await fetch_autoria(query, session)
+        data = await fetch_autoria(query, session, lang)
         if data: return data
 
-        data = await fetch_bazagai(query, session)
+        data = await fetch_bazagai(query, session, lang)
         if data: return data
 
     return None
 
-def format_vin_report(data: dict) -> tuple[str, str | None]:
-    wanted_text = "🚨 <b>В РОЗЫСКЕ!</b>" if data["is_stolen"] else "✅ В розыске не числится"
-
-    report = (
-        f"🚘 <b>Отчет по авто: {data['vendor']} {data['model']} ({data['year']})</b>\n"
-        f"🔍 <i>Источник: {data['source']}</i>\n\n"
-        f"<b>Характеристики:</b>\n"
-        f"▪️ Двигатель: {data['engine']}\n"
-        f"▪️ Цвет: {data['color']}\n\n"
-        f"<b>История:</b>\n"
-        f"👥 Записей о регистрации: {data['owners_count']}\n"
-        f"🛣 Пробег: {data['mileage']}\n"
-        f"💥 ДТП: {data['accidents']}\n\n"
-        f"<b>Статус:</b>\n"
-        f"{wanted_text}"
-    )
+def format_vin_report(data: dict, lang: str = "ru") -> tuple[str, str | None]:
+    if lang == "uk":
+        wanted_text = "🚨 <b>В РОЗШУКУ!</b>" if data["is_stolen"] else "✅ В розшуку не значиться"
+        report = (
+            f"🚘 <b>Звіт по авто: {data['vendor']} {data['model']} ({data['year']})</b>\n"
+            f"🔍 <i>Джерело: {data['source']}</i>\n\n"
+            f"<b>Характеристики:</b>\n"
+            f"▪️ Двигун: {data['engine']}\n"
+            f"▪️ Колір: {data['color']}\n\n"
+            f"<b>Історія:</b>\n"
+            f"👥 Записів про реєстрацію: {data['owners_count']}\n"
+            f"🛣 Пробіг: {data['mileage']}\n"
+            f"💥 ДТП: {data['accidents']}\n\n"
+            f"<b>Статус:</b>\n"
+            f"{wanted_text}"
+        )
+    else:
+        wanted_text = "🚨 <b>В РОЗЫСКЕ!</b>" if data["is_stolen"] else "✅ В розыске не числится"
+        report = (
+            f"🚘 <b>Отчет по авто: {data['vendor']} {data['model']} ({data['year']})</b>\n"
+            f"🔍 <i>Источник: {data['source']}</i>\n\n"
+            f"<b>Характеристики:</b>\n"
+            f"▪️ Двигатель: {data['engine']}\n"
+            f"▪️ Цвет: {data['color']}\n\n"
+            f"<b>История:</b>\n"
+            f"👥 Записей о регистрации: {data['owners_count']}\n"
+            f"🛣 Пробег: {data['mileage']}\n"
+            f"💥 ДТП: {data['accidents']}\n\n"
+            f"<b>Статус:</b>\n"
+            f"{wanted_text}"
+        )
     return report, data["photo_url"]
