@@ -24,7 +24,7 @@ async def fetch_autoria(query: str, session: aiohttp.ClientSession, lang: str) -
     url = f"https://developers.ria.com/auto/params/by/vin-code/?user_id={AUTORIA_USER_ID}&api_key={AUTORIA_API_KEY}"
     
     payload = {
-        "langId": 4, # 4 = Украинский язык ответа от API АвтоРИА
+        "langId": 4,
         "period": 365,
         "params": {
             "omniId": query
@@ -39,7 +39,6 @@ async def fetch_autoria(query: str, session: aiohttp.ClientSession, lang: str) -
                 if "noticeData" in data:
                     for notice in data["noticeData"]:
                         if notice.get("noticeType") == "error":
-                            logging.info(f"AutoRIA: Машина с '{query}' не найдена на сайте.")
                             return None
                 
                 res = get_standard_template(lang)

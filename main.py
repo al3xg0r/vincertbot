@@ -5,7 +5,8 @@ from config import BOT_TOKEN
 from handlers.user import router as user_router
 
 async def main():
-    logging.basicConfig(level=logging.INFO)
+    # Переключили уровень логов на WARNING, чтобы не забивать диск
+    logging.basicConfig(level=logging.WARNING)
     
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()
@@ -13,7 +14,8 @@ async def main():
     # Регистрация роутеров
     dp.include_router(user_router)
     
-    logging.info("Бот запущен...")
+    # Оставим сообщение о старте как WARNING, чтобы видеть перезагрузки
+    logging.warning("Бот запущен...") 
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
