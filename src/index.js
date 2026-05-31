@@ -21,9 +21,9 @@ const i18n = {
     btn_about: "ℹ️ Про бота",
     btn_help: "🆘 Допомога",
     check_prompt: "🚘 <b>Чекаю номер або VIN!</b>\nНапиши мені держ. номер (наприклад, <code>AA1234BC</code>) або 17-значний VIN-код.",
-    about_text: "🤖 <b>VinCertBot</b> — ваш надійний помічник.\n\n<b>Джерела даних:</b>\n🔸 <b>AUTO.RIA</b> — оголошення про продаж.\n🔸 <b>Baza-Gai</b> — офіційний реєстр МВС України.\n\n<i>Всі дані збираються виключно з відкритих джерел і надаються як є.</i>",
-    help_text: "📖 <b>Як користуватися ботом:</b>\n\n1️⃣ Знайдіть держ. номер авто або його VIN-код.\n2️⃣ Відправте його мені (без пробілів, англійськими літерами).\n3️⃣ Зачекайте пару секунд, поки я зберу звіт.\n\n❗️ <i>Якщо бот нічого не знайшов:</i>\nМожливо, машина не переоформлялася з 2013 року і не продавалася на популярних майданчиках в інтернеті.",
-    invalid_format: "⚠️ Невірний формат. Відправте 17-значний VIN-код або держ. номер авто (наприклад, AA1234BC).",
+    about_text: "🤖 <b>VinCertBot</b> — ваш надійний помічник.\n\n<b>Джерела даних:</b>\n🔸 <b>AUTO.RIA</b> — оголошення про продаж.\n🔸 <b>Baza-Gai</b> — офіційний реестр МВС України.\n\n<i>Всі дані збираються виключно з відкритих джерел і надаються як є.</i>",
+    help_text: "📖 <b>Як користуватися ботом:</b>\n\n1️⃣ Знайдіть держ. номер авто або його VIN-код.\n2️⃣ Відправте його мне (без пробілів, англійськими літерами).\n3️⃣ Зачекайте пару секунд, поки я зберу звіт.\n\n❗️ <i>Якщо бот нічого не знайшов:</i>\nМожливо, машина не переоформлялася з 2013 року і не продавалася на популярних майданчиках в інтернеті.",
+    invalid_format: "⚠️ Невірний формат. Відправте 17-значный VIN-код або держ. номер авто (наприклад, AA1234BC).",
     wait_msg: "⏳ Запитую дані з баз. Зачекайте...",
     not_found: "❌ Дані за цим запитом не знайдені або сервіс тимчасово недоступний.",
     report_title: "📊 <b>Звіт по автомобілю:</b>",
@@ -34,6 +34,25 @@ const i18n = {
 
 export default {
   async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+
+    // Handle GET request to set webhook automatically from Cloudflare infrastructure
+    if (request.method === "GET" && url.pathname === "/set") {
+      const webhookUrl = `https://${url.hostname}`;
+      const tgUrl = `https://api.telegram.org/bot${env.BOT_TOKEN}/setWebhook?url=${webhookUrl}`;
+      
+      try {
+        const res = await fetch(tgUrl);
+        const data = await res.json();
+        return new Response(JSON.stringify(data), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      } catch (err) {
+        return new Response(`Failed to set webhook: ${err.message}`, { status: 500 });
+      }
+    }
+
     // Only accept POST requests for Webhooks
     if (request.method !== "POST") {
       return new Response("OK", { status: 200 });
