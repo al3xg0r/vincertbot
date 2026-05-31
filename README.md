@@ -8,18 +8,17 @@ A Telegram bot for quick and convenient checking of vehicle history using Ukrain
 * **Cascade System (Fallback):** If data is missing on one platform (e.g., the car was never sold online), the bot automatically and seamlessly switches to the Ministry of Internal Affairs (MIA) database.
 * **Bilingual Support:** Automatically detects the user's Telegram app language and responds in Ukrainian (`uk`) or Russian (`ru`).
 * **Deep Parsing:** Extracts not only the make and year but also the color, fuel type, and engine capacity directly from the registration history.
-* **Asynchronous:** Built with modern `aiogram 3` and `aiohttp` libraries, ensuring fast performance without blocking the thread during multiple simultaneous requests.
 
 ## 🔌 Integrations (Data Sources)
 
 1. **[AUTO.RIA API](https://developers.ria.com/)** — checking vehicles that have been listed for sale (parsing trim levels, mileage, photos).
 2. **[Baza-Gai](https://baza-gai.com.ua/) (MIA of Ukraine)** — the official vehicle registry (registration history since 2013, ownership changes, stolen vehicle checks).
 
-## 🛠 Tech Stack
-
-* **Language:** Python 3.10+
-* **Bot Framework:** Aiogram 3.x
-* **Network Requests:** Aiohttp
+## Tech Stack
+- **JavaScript (ES Modules)**
+- **Cloudflare Workers** (Serverless execution)
+- **Telegram Bot API** (Webhooks)
+- **Baza-Gai & AUTO.RIA APIs**
 
 ## 📄 License
 

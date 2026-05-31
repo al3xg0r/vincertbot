@@ -1,0 +1,12 @@
+{
+  "name": "vincertbot",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Telegram Bot for checking cars in Ukraine via Cloudflare Workers",
+  "scripts": {
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
