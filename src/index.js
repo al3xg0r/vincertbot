@@ -4,12 +4,12 @@ const i18n = {
     start: "👋 <b>Добро пожаловать в VinCertBot!</b>\n\nЯ помогу узнать историю автомобиля по базам Украины.\nПросто отправь мне <b>VIN-код (17 символов)</b> или <b>гос. номер</b>.\n\nПоддерживается ввод на кириллице и латинице!",
     btn_check: "🔍 Проверить авто",
     btn_about: "ℹ️ О боте",
-    btn_help: "🆘 Помощь",
-    btn_support: "❤️ Поддержать",
-    check_prompt: "🚘 <b>Жду номер или VIN!</b>\nНапишите мне гос. номер или VIN-код.\n<i>Можно использовать русские буквы (АА1234ББ).</i>",
+    btn_help: "🔵 Помощь",
+    btn_support: "🟢 Поддержать",
+    check_prompt: "🚘 <b>Жду номер или VIN!</b>\nНапишите мне гос. номер или VIN-код.\n<i>Можно использовать русские/украинские буквы (АА1234ВВ).</i>",
     about_text: "🤖 <b>VinCertBot</b> — ваш надежный помощник.\n\n<b>Источники данных:</b>\n🔸 <b>AUTO.RIA</b> — объявления о продаже.\n🔸 <b>Baza-Gai</b> — официальный реестр МВД Украины.\n\n<i>Все данные собираются исключительно из открытых источников.</i>",
     help_text: "📖 <b>Инструкция:</b>\n\n1️⃣ Введите гос. номер или VIN.\n2️⃣ Ждите секунду.\n3️⃣ Получите отчет.\n\n❗️ <i>Если ничего не найдено:</i><br>Машина могла не переоформляться с 2013 года.\n\n💬 <b>Техническая поддержка:</b>\n@tg_agteam_bot",
-    invalid_format: "⚠️ Неверный формат.<br>Введите VIN (17 символов) или гос. номер (напр. АА1234ББ).",
+    invalid_format: "⚠️ Неверный формат.<br>Введите VIN (17 символов) или гос. номер (напр. АА1234ВВ).",
     wait_msg: "⏳ Ищем информацию в базах...",
     not_found: "❌ Данные не найдены или сервис временно недоступен.",
     report_title: "📊 <b>Отчет по автомобилю:</b>",
@@ -24,12 +24,12 @@ const i18n = {
     start: "👋 <b>Ласкаво просимо до VinCertBot!</b>\n\nЯ допоможу дізнатися історію автомобіля за базами України.\nПросто відправ мені <b>VIN-код</b> або <b>держ. номер</b>.\n\nПідтримується введення кирилицею та латиною!",
     btn_check: "🔍 Перевірити авто",
     btn_about: "ℹ️ Про бота",
-    btn_help: "🆘 Допомога",
-    btn_support: "❤️ Підтримати",
-    check_prompt: "🚘 <b>Чекаю номер або VIN!</b>\nНапишіть держ. номер або VIN.\n<i>Можна використовувати російські літери (АА1234ББ).</i>",
+    btn_help: "🔵 Допомога",
+    btn_support: "🟢 Підтримати",
+    check_prompt: "🚘 <b>Чекаю номер або VIN!</b>\nНапишіть держ. номер або VIN.\n<i>Можна використовувати українські літери (АА1234ВВ).</i>",
     about_text: "🤖 <b>VinCertBot</b> — ваш надійний помічник.\n\n<b>Джерела даних:</b>\n🔸 <b>AUTO.RIA</b> — оголошення про продаж.\n🔸 <b>Baza-Gai</b> — офіційний реєстр МВС України.\n\n<i>Всі дані збираються лише з відкритих джерел.</i>",
-    help_text: "📖 <b>Інструкція:</b>\n\n1️⃣ Введіть номер або VIN.\n2️⃣ Зачекайте секунду.\n3️⃣ Отримайте звіт.\n\n❗️ <i>Якщо нічого немає:</i><br>Машину могло не переоформляти з 2013 року.\n\n💬 <b>Технічна підтримка:</b>\n@tg_agteam_bot",
-    invalid_format: "⚠️ Невірний формат.<br>Введіть VIN або номер (напр. АА1234ББ).",
+    help_text: "📖 <b>Інструкция:</b>\n\n1️⃣ Введіть номер або VIN.\n2️⃣ Зачекайте секунду.\n3️⃣ Отримайте звіт.\n\n❗️ <i>Якщо нічого немає:</i><br>Машину могло не переоформляти з 2013 року.\n\n💬 <b>Технічна підтримка:</b>\n@tg_agteam_bot",
+    invalid_format: "⚠️ Невірний формат.<br>Введіть VIN або номер (напр. АА1234ВВ).",
     wait_msg: "⏳ Шукаємо інформацію в базах...",
     not_found: "❌ Дані не знайдено або сервіс тимчасово недоступний.",
     report_title: "📊 <b>Звіт по автомобілю:</b>",
@@ -46,17 +46,15 @@ const i18n = {
 const SUPPORT_WEBAPP_URL = "https://agteambot.hubapps.workers.dev/app/?project=VinCertBot";
 const SUPPORT_USERNAME = "tg_agteam_bot";
 
-// Helper to transliterate Cyrillic plates to Latin
-function toLatin(str) {
-  const map = {
-    'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'H', 'Є': 'E', 'И': 'Y', 'І': 'I', 
-    'К': 'K', 'Л': 'L', 'М': 'M', 'Н': 'N', 'О': 'O', 'Р': 'P', 'С': 'C', 
-    'Т': 'T', 'У': 'U', 'Ф': 'F', 'Х': 'Kh', 'Ч': 'Ch', 'Ш': 'Sh', 
-    'Ї': 'Yi', 'Ю': 'Yu', 'Я': 'Ya',
-    // Russian equivalents often used by users
-    'Ё': 'YO', 'Ц': 'Ts', 'Э': 'E', 'Ъ': '', 'Ь': ''
+// Helper to visually transliterate Cyrillic plates to Latin matches
+function normalizeInput(str) {
+  // We map visual Cyrillic characters to their Latin equivalents for license plates
+  const plateMap = {
+    'А': 'A', 'В': 'B', 'С': 'C', 'Е': 'E', 'Н': 'H', 'І': 'I',
+    'К': 'K', 'М': 'M', 'О': 'O', 'Р': 'P', 'Т': 'T', 'Х': 'X',
+    'У': 'Y' // In case Russian layout is used
   };
-  return str.split('').map(char => map[char.toUpperCase()] || char).join('');
+  return str.toUpperCase().split('').map(char => plateMap[char] || char).join('');
 }
 
 // Regex patterns
@@ -119,16 +117,9 @@ async function handleUpdate(update, env) {
   const message = update.message;
   const callbackQuery = update.callback_query;
   
-  // Get language from user preference (auto-detect)
-  let userLang = message?.from?.language_code === 'uk' ? 'uk' : 'ru';
-  if (!userLang || (callbackQuery && !message)) {
-    // Try to preserve language across callbacks by storing in a simple way
-    // For now fallback to detecting from original message user_lang
-    userLang = message?.from?.language_code === 'uk' ? 'uk' : 'ru';
-  }
-  
-  // Ensure we have a valid lang (fallback to russian)
-  if (userLang !== 'uk') userLang = 'ru';
+  // Reliably get language whether it's a message or a callback query
+  const fromUser = message?.from || callbackQuery?.from;
+  let userLang = fromUser?.language_code === 'uk' ? 'uk' : 'ru';
   
   const t = i18n[userLang];
 
@@ -141,8 +132,7 @@ async function handleUpdate(update, env) {
     resize_keyboard: true
   };
 
-  // Build Inline Keyboard with colored buttons (using emoji indicators since TG doesn't support custom colors)
-  // Blue button indicator 📘 for support, Green 🟢 for help
+  // Build Inline Keyboard with visual emoji indicators
   const inlineKeyboard = {
     inline_keyboard: [
       [
@@ -179,15 +169,12 @@ async function handleUpdate(update, env) {
     const cbChatId = callbackQuery.message.chat.id;
     const callbackData = callbackQuery.data;
     
-    // Acknowledge the callback to remove loading state
+    // Fixed: Added headers to answerCallbackQuery so the button stops spinning
     await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/answerCallbackQuery`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ callback_query_id: callbackQuery.id })
     });
-
-    // Determine language from stored context or re-detect
-    // Since we can't store per-user lang easily without KV, we'll rely on original detection
-    // In production you'd use KV storage here
     
     switch (callbackData) {
       case "action_check":
@@ -208,12 +195,9 @@ async function handleUpdate(update, env) {
 
   const chatId = message.chat.id;
   
-  // Normalize input: trim and uppercase for validation
+  // Normalize input: trim, uppercase, and visually convert Cyrillic to Latin
   let rawText = message.text.trim();
-  const normalizedUpper = rawText.toUpperCase();
-  
-  // Step 1: Transliterate Cyrillic to Latin before validation
-  const transcribed = toLatin(normalizedUpper);
+  const transcribed = normalizeInput(rawText);
   
   const isVin = VIN_REGEX.test(transcribed);
   const isPlate = PLATE_REGEX.test(transcribed);
@@ -247,7 +231,6 @@ async function handleUpdate(update, env) {
     if (upperText === t.btn_check.toUpperCase() || 
         upperText === t.btn_about.toUpperCase() || 
         upperText === t.btn_help.toUpperCase()) {
-      // User clicked old-style reply button, guide them instead
       return;
     }
     
