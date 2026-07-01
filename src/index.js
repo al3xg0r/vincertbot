@@ -148,7 +148,7 @@ async function handleUpdate(update, env) {
     const inlineKeyboard = {
       inline_keyboard: [
         [
-          { text: t.btn_check, callback_data: "action_check", style: "primary" },
+          { text: t.btn_check, callback_data: "action_check", style: "danger" },
           { text: t.btn_about, callback_data: "action_about" }
         ],
         [

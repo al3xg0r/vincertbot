@@ -3,5 +3,20 @@ main = "src/index.js"
 compatibility_date = "2024-05-31"
 workers_dev = true
 
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1
+
 # All sensitive variables (BOT_TOKEN, AUTORIA_API_KEY, AUTORIA_USER_ID, BAZAGAI_API_KEY)
 # are stored securely using Cloudflare Secrets. Do not add them here.
