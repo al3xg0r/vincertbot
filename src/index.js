@@ -12,6 +12,8 @@ const i18n = {
     wait_msg: "⏳ Ищем информацию в базах...",
     not_found: "❌ Данные не найдены или сервис временно недоступен.",
     report_title: "📊 <b>Отчет по автомобилю:</b>",
+    label_color: "Цвет",
+    label_engine: "Объем двигателя",
     stolen_yes: "🚨 <b>В РОЗЫСКЕ!</b>",
     stolen_no: "✅ Чисто, в розыске не числится",
     cmd_start: "Запуск бота",
@@ -31,6 +33,8 @@ const i18n = {
     wait_msg: "⏳ Шукаємо інформацію в базах...",
     not_found: "❌ Дані не знайдено або сервіс тимчасово недоступний.",
     report_title: "📊 <b>Звіт по автомобілю:</b>",
+    label_color: "Колір",
+    label_engine: "Об'єм двигуна",
     stolen_yes: "🚨 <b>У РОЗШУКУ!</b>",
     stolen_no: "✅ У розшуку не перебуває",
     cmd_start: "Запуск бота",
@@ -220,7 +224,7 @@ async function handleUpdate(update, env) {
       const waitMsgId = waitMsgRes.result?.message_id;
 
       try {
-        const report = await fetchCarData(query, isVin, isPlate, env, t);
+        const report = await fetchCarData(query, isVin, isPlate, env, t, userLang);
 
         if (waitMsgId) {
           await editTelegramMessage(env.BOT_TOKEN, chatId, waitMsgId, report, null, inlineKeyboard);
@@ -249,7 +253,7 @@ async function handleUpdate(update, env) {
   }
 }
 
-async function fetchCarData(query, isVin, isPlate, env, t) {
+async function fetchCarData(query, isVin, isPlate, env, t, userLang) {
   try {
     let endpoint = isPlate
         ? `https://baza-gai.com.ua/nomer/${query}`
@@ -267,6 +271,8 @@ async function fetchCarData(query, isVin, isPlate, env, t) {
     }
 
     const data = await gaiResponse.json();
+    // API returns localized text under "ru" and "ua" keys (Ukrainian is "ua", not "uk")
+    const langKey = userLang === 'uk' ? 'ua' : 'ru';
 
     let msg = `${t.report_title}\n\n`;
 
@@ -279,15 +285,30 @@ async function fetchCarData(query, isVin, isPlate, env, t) {
     if (data.digits) msg += `🔢 <b>Номер:</b> <code>${data.digits}</code>\n`;
     if (data.vin) msg += `⚙️ <b>VIN:</b> <code>${data.vin}</code>\n`;
 
+    // Color and engine volume live inside each operation, not at top level.
+    // Take them from the most recent operation (is_last, or the first item
+    // as a fallback since the API returns operations sorted newest-first).
+    const operations = Array.isArray(data.operations) ? data.operations : [];
+    const latestOp = operations.find(op => op.is_last) || operations[0];
+
+    if (latestOp?.color?.[langKey]) {
+      msg += `🎨 <b>${t.label_color}:</b> ${latestOp.color[langKey]}\n`;
+    }
+    if (latestOp?.displacement) {
+      const liters = (latestOp.displacement / 1000).toFixed(1);
+      msg += `🛠 <b>${t.label_engine}:</b> ${liters} л\n`;
+    }
+
     const isStolen = !!data.is_stolen;
     msg += `\n${isStolen ? t.stolen_yes : t.stolen_no}\n`;
 
-    if (Array.isArray(data.operations) && data.operations.length > 0) {
+    if (operations.length > 0) {
       msg += `\n📋 <b>История операций:</b>\n`;
-      data.operations.slice(0, 3).forEach((op) => {
-        const dateStr = op.date || "—";
-        const opText = (op.operation && (op.operation.ru || op.operation.ua)) || "Изменение владельца";
-        msg += `<i>${dateStr}</i>: ${opText}\n`;
+      operations.slice(0, 3).forEach((op) => {
+        const dateStr = op.registered_at || "—";
+        const opText = (op.operation && (op.operation[langKey] || op.operation.ru)) || "Изменение владельца";
+        const colorStr = op.color?.[langKey] ? `, ${op.color[langKey]}` : "";
+        msg += `<i>${dateStr}</i>: ${opText}${colorStr}\n`;
       });
     }
 
