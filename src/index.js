@@ -14,11 +14,7 @@ const i18n = {
     not_found: "❌ Данные не найдены или сервис временно недоступен.",
     report_title: "📊 <b>Отчет по автомобилю:</b>",
     stolen_yes: "🚨 <b>В РОЗЫСКЕ!</b>",
-    stolen_no: "✅ Чисто, в розыске не числится",
-    cmd_start: "Запуск бота",
-    cmd_check: "Проверка авто",
-    cmd_about: "О проекте",
-    cmd_help: "Помощь"
+    stolen_no: "✅ Чисто, в розыске не числится"
   },
   uk: {
     start: "👋 <b>Ласкаво просимо до VinCertBot!</b>\n\nЯ допоможу дізнатися історію автомобіля за базами України.\nПросто відправ мені <b>VIN-код</b> або <b>держ. номер</b>.\n\nПідтримується введення кирилицею та латиною!",
@@ -34,32 +30,26 @@ const i18n = {
     not_found: "❌ Дані не знайдено або сервіс тимчасово недоступний.",
     report_title: "📊 <b>Звіт по автомобілю:</b>",
     stolen_yes: "🚨 <b>У РОЗШУКУ!</b>",
-    stolen_no: "✅ У розшуку не перебуває",
-    cmd_start: "Запуск бота",
-    cmd_check: "Перевірка авто",
-    cmd_about: "Про проект",
-    cmd_help: "Допомога"
+    stolen_no: "✅ У розшуку не перебуває"
   }
 };
 
 // Support Mini App configuration
 const SUPPORT_WEBAPP_URL = "https://agteambot.hubapps.workers.dev/app/?project=VinCertBot";
-const SUPPORT_USERNAME = "tg_agteam_bot";
 
 // Transliteration table for Ukrainian/Russian -> Latin (for license plates ONLY)
-// Only includes characters used on Ukrainian license plates + common Russian ones
 function toLatin(str) {
   const map = {
     // Ukraine official plate chars
     'А': 'A', 'Є': 'E', 'І': 'I', 'К': 'K', 'М': 'M', 'Н': 'N',
     'О': 'O', 'Р': 'P', 'С': 'C', 'Т': 'T', 'У': 'U', 'Х': 'X',
     // Additional Russian keyboard mappings
-    'Б': 'B', 'В': 'V', 'Г': 'H', 'Ч': 'Ch', 'Ц': 'Ts'
+    'Б': 'B', 'В': 'V', 'Г': 'H'
   };
   return str.toUpperCase().split('').map(c => map[c] || c).join('');
 }
 
-// Regex patterns - strict validation after conversion
+// Regex patterns
 const VIN_REGEX = /^[A-HJ-NPR-Z0-9]{17}$/;
 const PLATE_REGEX = /^[A-Z]{2}\d{4}[A-Z]{2}$/;
 
@@ -111,11 +101,12 @@ async function handleUpdate(update, env) {
   
   const t = i18n[userLang];
 
-  // Get user info from appropriate source
-  const userId = update.callback_query?.from?.id || update.message?.chat?.id;
-  const chatId = update.callback_query?.message?.chat?.id || update.message?.chat?.id;
+  // Get IDs safely from either source
+  const chatId = update.callback_query?.message?.chat?.id ?? update.message?.chat?.id;
+  
+  if (!chatId) return; // Guard clause if no chat ID found
 
-  // Build Inline Keyboard - colors via button_color require Bot API 7.9+
+  // Build Inline Keyboard with colored buttons
   const inlineKeyboard = {
     inline_keyboard: [
       [
@@ -126,14 +117,14 @@ async function handleUpdate(update, env) {
         { 
           text: t.btn_help, 
           callback_data: "action_help",
-          color: "#1c7ed6"  // Blue hex code (💙)
+          color: "#1c7ed6"  // Blue (💙)
         }
       ],
       [
         { 
           text: t.btn_support, 
           web_app: { url: SUPPORT_WEBAPP_URL },
-          color: "#4ade80"  // Green hex code (💚)
+          color: "#4ade80"  // Green (💚)
         }
       ]
     ]
@@ -156,7 +147,7 @@ async function handleUpdate(update, env) {
     const cbChatId = update.callback_query.message.chat.id;
     const callbackData = update.callback_query.data;
     
-    // Important: Answer callback FIRST to prevent loading spinner timeout
+    // Answer callback FIRST to prevent loading spinner timeout
     await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/answerCallbackQuery`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -180,7 +171,6 @@ async function handleUpdate(update, env) {
   // Skip non-text messages
   if (!update.message || !update.message.text) return;
 
-  chatId = update.message.chat.id;
   const rawText = update.message.text.trim();
   
   // Convert cyrillic to latin before validation
@@ -302,7 +292,7 @@ async function editTelegramMessage(token, chatId, messageId, text, linkPreview =
   if (replyMarkup) body.reply_markup = replyMarkup;
 
   await fetch(url, {
-    method: "POST",
+    module: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)
   });
