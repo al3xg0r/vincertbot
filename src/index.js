@@ -5,7 +5,7 @@ const i18n = {
     btn_check: "🔍 Проверить авто",
     btn_about: "ℹ️ О боте",
     btn_help: "🆘 Помощь",
-    btn_support: "❤️ Поддержать",
+    btn_support: "💚 Поддержать",
     check_prompt: "🚘 <b>Жду номер или VIN!</b>\nНапишите мне гос. номер или VIN-код.\n<i>Можно использовать русские буквы (АА1234ББ).</i>",
     about_text: "🤖 <b>VinCertBot</b> — ваш надежный помощник.\n\n<b>Источники данных:</b>\n🔸 <b>AUTO.RIA</b> — объявления о продаже.\n🔸 <b>Baza-Gai</b> — официальный реестр МВД Украины.\n\n<i>Все данные собираются исключительно из открытых источников.</i>",
     help_text: "📖 <b>Инструкция:</b>\n\n1️⃣ Введите гос. номер или VIN.\n2️⃣ Ждите секунду.\n3️⃣ Получите отчет.\n\n❗️ <i>Если ничего не найдено:</i><br>Машина могла не переоформляться с 2013 года.\n\n💬 <b>Техническая поддержка:</b>\n@tg_agteam_bot",
@@ -25,7 +25,7 @@ const i18n = {
     btn_check: "🔍 Перевірити авто",
     btn_about: "ℹ️ Про бота",
     btn_help: "🆘 Допомога",
-    btn_support: "❤️ Підтримати",
+    btn_support: "💚 Підтримати",
     check_prompt: "🚘 <b>Чекаю номер або VIN!</b>\nНапишіть держ. номер або VIN.\n<i>Можна використовувати російські літери (АА1234ББ).</i>",
     about_text: "🤖 <b>VinCertBot</b> — ваш надійний помічник.\n\n<b>Джерела даних:</b>\n🔸 <b>AUTO.RIA</b> — оголошення про продаж.\n🔸 <b>Baza-Gai</b> — офіційний реєстр МВС України.\n\n<i>Всі дані збираються лише з відкритих джерел.</i>",
     help_text: "📖 <b>Інструкція:</b>\n\n1️⃣ Введіть номер або VIN.\n2️⃣ Зачекайте секунду.\n3️⃣ Отримайте звіт.\n\n❗️ <i>Якщо нічого немає:</i><br>Машину могло не переоформляти з 2013 року.\n\n💬 <b>Технічна підтримка:</b>\n@tg_agteam_bot",
@@ -122,27 +122,12 @@ async function handleUpdate(update, env) {
   // Get language from user preference (auto-detect)
   let userLang = message?.from?.language_code === 'uk' ? 'uk' : 'ru';
   if (!userLang || (callbackQuery && !message)) {
-    // Try to preserve language across callbacks by storing in a simple way
-    // For now fallback to detecting from original message user_lang
-    userLang = message?.from?.language_code === 'uk' ? 'uk' : 'ru';
+    userLang = 'ru'; // Default fallback
   }
-  
-  // Ensure we have a valid lang (fallback to russian)
-  if (userLang !== 'uk') userLang = 'ru';
   
   const t = i18n[userLang];
 
-  // Build Reply Keyboard for initial messages
-  const replyKeyboard = {
-    keyboard: [
-      [{ text: '/START' }],
-      [{ text: '/HELP' }]
-    ],
-    resize_keyboard: true
-  };
-
-  // Build Inline Keyboard with colored buttons (using emoji indicators since TG doesn't support custom colors)
-  // Blue button indicator 📘 for support, Green 🟢 for help
+  // Build Inline Keyboard with colored buttons
   const inlineKeyboard = {
     inline_keyboard: [
       [
@@ -150,12 +135,17 @@ async function handleUpdate(update, env) {
         { text: `${t.btn_about}`, callback_data: "action_about" }
       ],
       [
-        { text: `${t.btn_help}`, callback_data: "action_help" }
+        { 
+          text: `${t.btn_help}`, 
+          callback_data: "action_help",
+          button_color: "primary"  // Blue button (💙)
+        }
       ],
       [
         { 
           text: `${t.btn_support}`, 
-          web_app: { url: SUPPORT_WEBAPP_URL }
+          web_app: { url: SUPPORT_WEBAPP_URL },
+          button_color: "success"  // Green button (💚)
         }
       ]
     ]
@@ -179,16 +169,12 @@ async function handleUpdate(update, env) {
     const cbChatId = callbackQuery.message.chat.id;
     const callbackData = callbackQuery.data;
     
-    // Acknowledge the callback to remove loading state
+    // Acknowledge the callback first to remove loading state immediately
     await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/answerCallbackQuery`, {
       method: 'POST',
       body: JSON.stringify({ callback_query_id: callbackQuery.id })
     });
 
-    // Determine language from stored context or re-detect
-    // Since we can't store per-user lang easily without KV, we'll rely on original detection
-    // In production you'd use KV storage here
-    
     switch (callbackData) {
       case "action_check":
         await sendTelegramMessage(env.BOT_TOKEN, cbChatId, t.check_prompt, null, false, inlineKeyboard);
@@ -242,15 +228,6 @@ async function handleUpdate(update, env) {
       }
     }
   } else {
-    // Check if it's just a button label echo (old behavior prevention)
-    const upperText = rawText.toUpperCase();
-    if (upperText === t.btn_check.toUpperCase() || 
-        upperText === t.btn_about.toUpperCase() || 
-        upperText === t.btn_help.toUpperCase()) {
-      // User clicked old-style reply button, guide them instead
-      return;
-    }
-    
     // Invalid format handling
     await sendTelegramMessage(env.BOT_TOKEN, chatId, t.invalid_format, null, false, inlineKeyboard);
   }
