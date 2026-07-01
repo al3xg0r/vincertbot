@@ -4,10 +4,9 @@ const i18n = {
     start: "👋 <b>Добро пожаловать в VinCertBot!</b>\n\nЯ помогу узнать историю автомобиля по базам Украины.\nПросто отправь мне <b>VIN-код (17 символов)</b> или <b>гос. номер</b>.\n\nПоддерживается ввод на кириллице и латинице!",
     btn_check: "🔍 Проверить авто",
     btn_about: "ℹ️ О боте",
-    btn_help: "🛟 Помощь",
-    btn_support: "💚 Поддержать",
+    btn_support: "💙💛 Поддержать",
     check_prompt: "🚘 <b>Жду номер или VIN!</b>\nНапишите мне гос. номер или VIN-код.\n<i>Можно использовать русские/украинские буквы (АА1234ВВ).</i>",
-    about_text: "🤖 <b>VinCertBot</b> — ваш надежный помощник.\n\n<b>Источники данных:</b>\n🔸 <b>AUTO.RIA</b> — объявления о продаже.\n🔸 <b>Baza-Gai</b> — официальный реестр МВД Украины.\n\n<i>Все данные собираются исключительно из открытых источников.</i>",
+    about_text: "🤖 <b>VinCertBot</b> — ваш надежный помощник.\n\nПросто отправьте <b>VIN-код</b> или <b>гос. номер</b> — и в течение нескольких секунд бот соберет для вас отчет.\n\n<b>Источники данных:</b>\n🔸 <b>AUTO.RIA</b> — объявления о продаже.\n🔸 <b>Baza-Gai</b> — официальный реестр МВД Украины.\n\n<i>Все данные собираются исключительно из открытых источников.</i>\n\n❗️ <i>Если ничего не найдено:</i> машина могла не переоформляться с 2013 года.\n\n💬 <b>Поддержка:</b> @tg_agteam_bot",
     help_text: "📖 <b>Инструкция:</b>\n\n1️⃣ Введите гос. номер или VIN.\n2️⃣ Ждите секунду.\n3️⃣ Получите отчет.\n\n❗️ <i>Если ничего не найдено:</i><br>Машина могла не переоформляться с 2013 года.\n\n💬 <b>Техническая поддержка:</b>\n@tg_agteam_bot",
     invalid_format: "⚠️ Неверный формат.<br>Введите VIN (17 символов) или гос. номер (напр. АА1234ВВ).",
     wait_msg: "⏳ Ищем информацию в базах...",
@@ -24,10 +23,9 @@ const i18n = {
     start: "👋 <b>Ласкаво просимо до VinCertBot!</b>\n\nЯ допоможу дізнатися історію автомобіля за базами України.\nПросто відправ мені <b>VIN-код</b> або <b>держ. номер</b>.\n\nПідтримується введення кирилицею та латиною!",
     btn_check: "🔍 Перевірити авто",
     btn_about: "ℹ️ Про бота",
-    btn_help: "🛟 Допомога",
-    btn_support: "💚 Підтримати",
+    btn_support: "💙💛 Підтримати",
     check_prompt: "🚘 <b>Чекаю номер або VIN!</b>\nНапишіть держ. номер або VIN.\n<i>Можна використовувати українські літери (АА1234ВВ).</i>",
-    about_text: "🤖 <b>VinCertBot</b> — ваш надійний помічник.\n\n<b>Джерела даних:</b>\n🔸 <b>AUTO.RIA</b> — оголошення про продаж.\n🔸 <b>Baza-Gai</b> — офіційний реєстр МВС України.\n\n<i>Всі дані збираються лише з відкритих джерел.</i>",
+    about_text: "🤖 <b>VinCertBot</b> — ваш надійний помічник.\n\nПросто надішліть <b>VIN-код</b> або <b>держ. номер</b> — і за кілька секунд бот збере для вас звіт.\n\n<b>Джерела даних:</b>\n🔸 <b>AUTO.RIA</b> — оголошення про продаж.\n🔸 <b>Baza-Gai</b> — офіційний реєстр МВС України.\n\n<i>Всі дані збираються лише з відкритих джерел.</i>\n\n❗️ <i>Якщо нічого немає:</i> машину могло не переоформляти з 2013 року.\n\n💬 <b>Підтримка:</b> @tg_agteam_bot",
     help_text: "📖 <b>Інструкция:</b>\n\n1️⃣ Введіть номер або VIN.\n2️⃣ Зачекайте секунду.\n3️⃣ Отримайте звіт.\n\n❗️ <i>Якщо нічого немає:</i><br>Машину могло не переоформляти з 2013 року.\n\n💬 <b>Технічна підтримка:</b>\n@tg_agteam_bot",
     invalid_format: "⚠️ Невірний формат.<br>Введіть VIN або номер (напр. АА1234ВВ).",
     wait_msg: "⏳ Шукаємо інформацію в базах...",
@@ -145,14 +143,12 @@ async function handleUpdate(update, env) {
     // Since Bot API 9.4 (Feb 9, 2026), InlineKeyboardButton supports a
     // "style" field to color the button. Valid values: "primary" (blue),
     // "success" (green), "danger" (red). Omit for the default gray look.
+    // "Помощь" button removed per request — /help still works as a command.
     const inlineKeyboard = {
       inline_keyboard: [
         [
           { text: t.btn_check, callback_data: "action_check", style: "danger" },
-          { text: t.btn_about, callback_data: "action_about" }
-        ],
-        [
-          { text: t.btn_help, callback_data: "action_help", style: "primary" }
+          { text: t.btn_about, callback_data: "action_about", style: "primary" }
         ],
         [
           { text: t.btn_support, web_app: { url: SUPPORT_WEBAPP_URL }, style: "success" }
@@ -189,9 +185,6 @@ async function handleUpdate(update, env) {
         case "action_about":
           await sendTelegramMessage(env.BOT_TOKEN, cbChatId, t.about_text, null, false, inlineKeyboard);
           break;
-        case "action_help":
-          await sendTelegramMessage(env.BOT_TOKEN, cbChatId, t.help_text, null, false, inlineKeyboard);
-          break;
         default:
           console.error("Unknown callback_data:", callbackData);
       }
@@ -207,7 +200,7 @@ async function handleUpdate(update, env) {
       return;
     }
 
-    // Handle HELP Command
+    // Handle HELP Command (still available as a text command even without a button)
     if (message.text.toLowerCase() === '/help') {
       await sendTelegramMessage(env.BOT_TOKEN, message.chat.id, t.help_text, null, false, inlineKeyboard);
       return;
@@ -245,8 +238,7 @@ async function handleUpdate(update, env) {
     } else {
       const upperText = rawText.toUpperCase();
       if (upperText === t.btn_check.toUpperCase() ||
-          upperText === t.btn_about.toUpperCase() ||
-          upperText === t.btn_help.toUpperCase()) {
+          upperText === t.btn_about.toUpperCase()) {
         return;
       }
 
