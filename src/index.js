@@ -4,8 +4,8 @@ const i18n = {
     start: "👋 <b>Добро пожаловать в VinCertBot!</b>\n\nЯ помогу узнать историю автомобиля по базам Украины.\nПросто отправь мне <b>VIN-код (17 символов)</b> или <b>гос. номер</b>.\n\nПоддерживается ввод на кириллице и латинице!",
     btn_check: "🔍 Проверить авто",
     btn_about: "ℹ️ О боте",
-    btn_help: "🔵 Помощь",
-    btn_support: "🟢 Поддержать",
+    btn_help: "Помощь", // Убрали эмодзи, так как кнопка будет синей
+    btn_support: "Поддержать", // Убрали эмодзи, так как кнопка будет зеленой
     check_prompt: "🚘 <b>Жду номер или VIN!</b>\nНапишите мне гос. номер или VIN-код.\n<i>Можно использовать русские/украинские буквы (АА1234ВВ).</i>",
     about_text: "🤖 <b>VinCertBot</b> — ваш надежный помощник.\n\n<b>Источники данных:</b>\n🔸 <b>AUTO.RIA</b> — объявления о продаже.\n🔸 <b>Baza-Gai</b> — официальный реестр МВД Украины.\n\n<i>Все данные собираются исключительно из открытых источников.</i>",
     help_text: "📖 <b>Инструкция:</b>\n\n1️⃣ Введите гос. номер или VIN.\n2️⃣ Ждите секунду.\n3️⃣ Получите отчет.\n\n❗️ <i>Если ничего не найдено:</i><br>Машина могла не переоформляться с 2013 года.\n\n💬 <b>Техническая поддержка:</b>\n@tg_agteam_bot",
@@ -24,8 +24,8 @@ const i18n = {
     start: "👋 <b>Ласкаво просимо до VinCertBot!</b>\n\nЯ допоможу дізнатися історію автомобіля за базами України.\nПросто відправ мені <b>VIN-код</b> або <b>держ. номер</b>.\n\nПідтримується введення кирилицею та латиною!",
     btn_check: "🔍 Перевірити авто",
     btn_about: "ℹ️ Про бота",
-    btn_help: "🔵 Допомога",
-    btn_support: "🟢 Підтримати",
+    btn_help: "Допомога", // Убрали эмодзи
+    btn_support: "Підтримати", // Убрали эмодзи
     check_prompt: "🚘 <b>Чекаю номер або VIN!</b>\nНапишіть держ. номер або VIN.\n<i>Можна використовувати українські літери (АА1234ВВ).</i>",
     about_text: "🤖 <b>VinCertBot</b> — ваш надійний помічник.\n\n<b>Джерела даних:</b>\n🔸 <b>AUTO.RIA</b> — оголошення про продаж.\n🔸 <b>Baza-Gai</b> — офіційний реєстр МВС України.\n\n<i>Всі дані збираються лише з відкритих джерел.</i>",
     help_text: "📖 <b>Інструкция:</b>\n\n1️⃣ Введіть номер або VIN.\n2️⃣ Зачекайте секунду.\n3️⃣ Отримайте звіт.\n\n❗️ <i>Якщо нічого немає:</i><br>Машину могло не переоформляти з 2013 року.\n\n💬 <b>Технічна підтримка:</b>\n@tg_agteam_bot",
@@ -44,15 +44,13 @@ const i18n = {
 
 // Support Mini App configuration
 const SUPPORT_WEBAPP_URL = "https://agteambot.hubapps.workers.dev/app/?project=VinCertBot";
-const SUPPORT_USERNAME = "tg_agteam_bot";
 
 // Helper to visually transliterate Cyrillic plates to Latin matches
 function normalizeInput(str) {
-  // We map visual Cyrillic characters to their Latin equivalents for license plates
   const plateMap = {
     'А': 'A', 'В': 'B', 'С': 'C', 'Е': 'E', 'Н': 'H', 'І': 'I',
     'К': 'K', 'М': 'M', 'О': 'O', 'Р': 'P', 'Т': 'T', 'Х': 'X',
-    'У': 'Y' // In case Russian layout is used
+    'У': 'Y' 
   };
   return str.toUpperCase().split('').map(char => plateMap[char] || char).join('');
 }
@@ -74,7 +72,6 @@ export default {
         const res = await fetch(tgUrl);
         const data = await res.json();
         
-        // Set bot commands for better UX
         await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/setMyCommands`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -97,7 +94,6 @@ export default {
       }
     }
 
-    // Only accept POST requests for Webhooks
     if (request.method !== "POST") {
       return new Response("OK", { status: 200 });
     }
@@ -117,22 +113,12 @@ async function handleUpdate(update, env) {
   const message = update.message;
   const callbackQuery = update.callback_query;
   
-  // Reliably get language whether it's a message or a callback query
   const fromUser = message?.from || callbackQuery?.from;
   let userLang = fromUser?.language_code === 'uk' ? 'uk' : 'ru';
   
   const t = i18n[userLang];
 
-  // Build Reply Keyboard for initial messages
-  const replyKeyboard = {
-    keyboard: [
-      [{ text: '/START' }],
-      [{ text: '/HELP' }]
-    ],
-    resize_keyboard: true
-  };
-
-  // Build Inline Keyboard with visual emoji indicators
+  // Build Inline Keyboard with Native Colors
   const inlineKeyboard = {
     inline_keyboard: [
       [
@@ -140,18 +126,23 @@ async function handleUpdate(update, env) {
         { text: `${t.btn_about}`, callback_data: "action_about" }
       ],
       [
-        { text: `${t.btn_help}`, callback_data: "action_help" }
+        { 
+          text: `${t.btn_help}`, 
+          callback_data: "action_help",
+          style: "primary" // Делает кнопку синей
+        }
       ],
       [
         { 
           text: `${t.btn_support}`, 
-          web_app: { url: SUPPORT_WEBAPP_URL }
+          web_app: { url: SUPPORT_WEBAPP_URL },
+          style: "success" // Делает кнопку зеленой
         }
       ]
     ]
   };
 
-  // Handle START Command (case insensitive)
+  // Handle START Command
   if (message && message.text && message.text.toLowerCase() === '/start') {
     const welcomeMsg = t.start + "\n\n<b>⬇️ Используйте меню ниже ⬇️</b>";
     await sendTelegramMessage(env.BOT_TOKEN, message.chat.id, welcomeMsg, null, false, inlineKeyboard);
@@ -169,7 +160,6 @@ async function handleUpdate(update, env) {
     const cbChatId = callbackQuery.message.chat.id;
     const callbackData = callbackQuery.data;
     
-    // Fixed: Added headers to answerCallbackQuery so the button stops spinning
     await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/answerCallbackQuery`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -190,12 +180,9 @@ async function handleUpdate(update, env) {
     return;
   }
 
-  // Skip non-text messages
   if (!message || !message.text) return;
 
   const chatId = message.chat.id;
-  
-  // Normalize input: trim, uppercase, and visually convert Cyrillic to Latin
   let rawText = message.text.trim();
   const transcribed = normalizeInput(rawText);
   
@@ -205,7 +192,6 @@ async function handleUpdate(update, env) {
   if (isVin || isPlate) {
     const query = transcribed.replace(/\s+/g, '');
     
-    // Send waiting message
     const waitMsgRes = await sendTelegramMessage(env.BOT_TOKEN, chatId, t.wait_msg);
     const waitMsgId = waitMsgRes.result?.message_id;
     
@@ -226,7 +212,6 @@ async function handleUpdate(update, env) {
       }
     }
   } else {
-    // Check if it's just a button label echo (old behavior prevention)
     const upperText = rawText.toUpperCase();
     if (upperText === t.btn_check.toUpperCase() || 
         upperText === t.btn_about.toUpperCase() || 
@@ -234,7 +219,6 @@ async function handleUpdate(update, env) {
       return;
     }
     
-    // Invalid format handling
     await sendTelegramMessage(env.BOT_TOKEN, chatId, t.invalid_format, null, false, inlineKeyboard);
   }
 }
@@ -258,7 +242,6 @@ async function fetchCarData(query, isVin, isPlate, env, t) {
 
     const data = await gaiResponse.json();
 
-    // Build report safely avoiding undefined
     let msg = `${t.report_title}\n\n`;
     
     const brand = data.vendor || "Невідомий бренд";
@@ -306,14 +289,8 @@ async function sendTelegramMessage(token, chatId, text, messageId = null, isEdit
     disable_web_page_preview: true
   };
 
-  if (messageId && isEdit) {
-    body.message_id = messageId;
-  }
-
-  if (replyMarkup) {
-    body.reply_markup = replyMarkup;
-  }
-
+  if (messageId && isEdit) body.message_id = messageId;
+  if (replyMarkup) body.reply_markup = replyMarkup;
   if (!isEdit) delete body.message_id; 
 
   const res = await fetch(url, {
@@ -321,11 +298,6 @@ async function sendTelegramMessage(token, chatId, text, messageId = null, isEdit
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)
   });
-
-  if (!res.ok) {
-     const errText = await res.text();
-     console.error("TG API Error:", errText);
-  }
 
   return await res.json();
 }
